@@ -9,6 +9,9 @@ class UserController extends Controller
 {
     public function show(){
         $user = User::all();
-        return $user;
+        return response()->json([
+            'success' => true,
+            'data' => $user,
+        ]);
     }
 }
