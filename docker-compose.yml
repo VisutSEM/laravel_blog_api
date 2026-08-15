@@ -29,7 +29,7 @@ services:
       MYSQL_DATABASE: blog_api
       MYSQL_USER: laravel
       MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root123
     ports:
       - "3306:3306"
     volumes:
@@ -40,7 +40,7 @@ services:
     container_name: laravel_blog_phpmyadmin
     restart: always
     ports:
-      - "8080:80"
+      - "8001:80"
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306

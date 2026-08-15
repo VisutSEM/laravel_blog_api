@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\AdressController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -31,10 +32,24 @@ Route::prefix('admin')->group(function () {
     Route::post('categories', [CategoriesContrller::class, 'store']);
     Route::get('categories', [CategoriesContrller::class, 'index']);
     Route::get('categories/{id}', [CategoriesContrller::class, 'show']);
+    Route::put('categories/{category}', [CategoriesContrller::class, 'update']);
+    Route::delete('categories/{category}', [CategoriesContrller::class, 'destroy']);
+    
+
+    //============= Products ===============//
     Route::post('products', [ProductController::class, 'store']);
     Route::get('products', [ProductController::class, 'index']);
+    Route::put('products/{product}', [ProductController::class, 'update']);
+    Route::delete('products/{product}', [ProductController::class, 'destroy']);
+
+    //============= Banners ===============//
     Route::get('banners', [BannerController::class, 'index']);
     Route::post('banners', [BannerController::class, 'store']);
-    Route::post('/banners/{id}', [BannerController::class, 'update']); // with image upload
+    Route::put('/banners/{id}', [BannerController::class, 'update']); // with image upload
     Route::delete('/banners/{id}', [BannerController::class, 'destroy']);
+
+    //============= Address ===============//
+    Route::get('address', [AdressController::class, 'index']);
+    Route::post('address', [AdressController::class, 'store']);
+    Route::put('address/{id}', [AdressController::class, 'update']);
 });

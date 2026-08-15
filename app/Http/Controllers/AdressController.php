@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Adress;
+use Faker\Provider\ar_EG\Address;
 use Illuminate\Http\Request;
 
 class AdressController extends Controller
@@ -12,7 +13,11 @@ class AdressController extends Controller
      */
     public function index()
     {
-        //
+        $address = Adress::all();
+        return response()->json([
+            'status' => 200,
+            'address' => $address
+        ], 200);
     }
 
     /**
@@ -28,7 +33,19 @@ class AdressController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $data = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'city' => 'required|string|max:100',
+            'street'=> 'required|string|max:255',
+            'state' => 'required|string|max:100',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+        $address = Adress::create($data);
+        return response()->json([
+            'message' => 'Address created successfully',
+            'address' => $address
+        ], 201);
     }
 
     /**
@@ -52,7 +69,19 @@ class AdressController extends Controller
      */
     public function update(Request $request, Adress $adress)
     {
-        //
+        $data = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'city' => 'required|string|max:100',
+            'street'=> 'required|string|max:255',
+            'state' => 'required|string|max:100',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+        $adress->update($data);
+        return response()->json([
+            'message' => 'Address updated successfully',
+            'address' => $adress
+        ], 200);
     }
 
     /**

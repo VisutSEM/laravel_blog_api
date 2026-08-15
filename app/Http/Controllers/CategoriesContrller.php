@@ -6,6 +6,7 @@ use App\Http\Requests\StoreCategoryRequest;
 use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Http\Resources\CategoryResource;
+use App\Http\Requests\UpdateCategoryRequest;
 
 class CategoriesContrller extends Controller
 {
@@ -18,13 +19,13 @@ class CategoriesContrller extends Controller
 
     public function index()
     {
-        // $categories = Category::all();
-        // return CategoryResource::collection($categories);
-        $categories = Category::with('products')->get();
+        $categories = Category::all();
+        return CategoryResource::collection($categories);
+        // $categories = Category::with('products')->get();
 
-        return response()->json([
-            'data' => $categories
-        ]);
+        // return response()->json([
+        //     'data' => $categories
+        // ]);
     }
 
     public function show($id)
@@ -34,21 +35,19 @@ class CategoriesContrller extends Controller
         return new CategoryResource($category);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateCategoryRequest $request, Category $category)
     {
-        $category = Category::findOrFail($id);
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'slug' => 'required|string|unique:categories,slug,' . $category->id,
-        ]);
-        $category->update($validated);
+
+        $category->update($request->validated());
+        //dd($category);
         return new CategoryResource($category);
     }
 
-    public function destroy($id)
+    public function destroy(Category $category)
     {
-        $category = Category::findOrFail($id);
         $category->delete();
-        return response()->json(null, 204);
+        return response()->json([
+            'message' => 'Category deleted successfully'
+        ]);
     }
 }
