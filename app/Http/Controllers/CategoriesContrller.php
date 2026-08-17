@@ -22,7 +22,6 @@ class CategoriesContrller extends Controller
         $categories = Category::all();
         return CategoryResource::collection($categories);
         // $categories = Category::with('products')->get();
-
         // return response()->json([
         //     'data' => $categories
         // ]);
