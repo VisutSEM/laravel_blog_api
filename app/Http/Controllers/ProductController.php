@@ -2,123 +2,102 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Category;
-use Exception;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use App\Models\Product;
 use Cloudinary\Cloudinary;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
 class ProductController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of the products.
      */
     public function index()
     {
         $categories = Category::with('products')->get();
-       // $product = Product::all();
-       $featued_product = $categories->flatMap->product->take(5);
+
+        $featuredProducts = $categories
+            ->flatMap->products
+            ->take(5);
+
         return response()->json([
             'categories' => $categories,
-            'featured_products' => ProductResource::collection($featued_product)
+            'featured_products' => ProductResource::collection($featuredProducts),
         ], 200);
-
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Store a newly created product.
      */
-    public function create()
+    public function store(StoreProductRequest $request)
     {
-        //
+        try {
+            $data = $request->validated();
+
+            // Generate slug if not provided
+            if (empty($data['slug'])) {
+                $data['slug'] = Str::slug($data['name']);
+            }
+
+            /*
+             * Upload image to Cloudinary
+             */
+            if ($request->hasFile('image')) {
+                $cloudinary = new Cloudinary();
+
+                $result = $cloudinary
+                    ->uploadApi()
+                    ->upload(
+                        $request->file('image')->getRealPath(),
+                        [
+                            'folder' => 'products',
+                        ]
+                    );
+
+                // Save Cloudinary secure URL
+                $data['image'] = $result['secure_url'];
+            }
+
+            $product = Product::create($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product added successfully',
+                'data' => new ProductResource($product),
+            ], 201);
+
+        } catch (Exception $e) {
+
+            Log::error('Product creation failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create product',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
-     * Store a newly created resource in storage.
-     */
-    //  public function store(Request $request)
-    // {
-    //     try {
-    //         // Validate request
-    //         $validated = $request->validate([
-    //             'category_id' => 'required|exists:categories,id',
-    //             'name' => 'required|string|max:255',
-    //             'slug' => 'nullable|string|unique:products,slug',
-    //             'description' => 'nullable|string',
-    //             'price' => 'required|numeric|min:0',
-    //             'image' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:2048',
-
-    //         ]);
-
-    //         // Upload image if exists
-    //         $imagePath = null;
-
-    //         if ($request->hasFile('image')) {
-    //             $imagePath = $request->file('image')->store('products', 'public');
-    //         }
-
-    //         // Generate slug if not provided
-    //         $slug = $request->slug ?? Str::slug($request->name);
-    //         // Create product
-    //         $product = Product::create([
-    //             'category_id' => $request->category_id,
-    //             'name' => $request->name,
-    //             'slug' => $slug,
-    //             'description' => $request->description,
-    //             'price' => $request->price,
-    //             'image' => $imagePath,
-
-    //         ]);
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Product added successfully',
-    //             'data' => $product
-    //         ], 201);
-
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to create product',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
-  public function store(StoreProductRequest $request)
-{
-    $data = $request->validated();
-
-    if ($request->hasFile('image')) {
-        $cloudinary = new Cloudinary();
-
-        $result = $cloudinary->uploadApi()->upload(
-            $request->file('image')->getRealPath(),
-            [
-                'folder' => 'products',
-            ]
-        );
-
-        $data['image'] = $result['secure_url'];
-    }
-
-    $product = Product::create($data);
-
-    return new ProductResource($product);
-}
-    /**
-     * Display the specified resource.
+     * Display the specified product.
      */
     public function show(Product $product)
     {
-        //
-    }  
+        return response()->json([
+            'success' => true,
+            'data' => new ProductResource($product),
+        ], 200);
+    }
 
     /**
-     * Show the form for editing the specified resource.
+     * Show the form for editing the specified product.
      */
     public function edit(Product $product)
     {
@@ -126,78 +105,110 @@ class ProductController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified product.
      */
     public function update(Request $request, Product $product)
     {
-         try {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|numeric',
-            'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-        ]);
+        try {
 
-        // Upload new image
-        if ($request->hasFile('image')) {
+            $validated = $request->validate([
+                'category_id' => 'sometimes|required|exists:categories,id',
+                'name' => 'sometimes|required|string|max:255',
+                'slug' => 'nullable|string|max:255|unique:products,slug,' . $product->id,
+                'price' => 'sometimes|required|numeric|min:0',
+                'description' => 'nullable|string',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            ]);
 
-            // Delete old image
-            if ($product->image && Storage::disk('public')->exists($product->image)) {
-                Storage::disk('public')->delete($product->image);
+            // Generate slug if name changed and slug wasn't provided
+            if (
+                isset($validated['name']) &&
+                empty($validated['slug'])
+            ) {
+                $validated['slug'] = Str::slug($validated['name']);
             }
 
-            // Store new image
-            $validated['image'] = $request->file('image')->store('products', 'public');
+            /*
+             * Upload new image to Cloudinary
+             */
+            if ($request->hasFile('image')) {
+
+                $cloudinary = new Cloudinary();
+
+                $result = $cloudinary
+                    ->uploadApi()
+                    ->upload(
+                        $request->file('image')->getRealPath(),
+                        [
+                            'folder' => 'products',
+                        ]
+                    );
+
+                $validated['image'] = $result['secure_url'];
+            }
+
+            $product->update($validated);
+
+            // Refresh model
+            $product->refresh();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product updated successfully',
+                'data' => new ProductResource($product),
+            ], 200);
+
+        } catch (Exception $e) {
+
+            Log::error('Product update failed', [
+                'product_id' => $product->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong while updating the product.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $product->update($validated);
-
-        return response()->json([
-            'status' => 200,
-            'message' => 'Product updated successfully',
-            'product' => $product,
-        ], 200);
-
-    } catch (Exception $e) {
-
-        Log::error('Product update failed', [
-            'product_id' => $product->id,
-            'error' => $e->getMessage(),
-        ]);
-
-        return response()->json([
-            'status' => 500,
-            'message' => 'Something went wrong while updating the product.',
-        ], 500);
-    }
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove the specified product.
      */
     public function destroy(Product $product)
     {
         try {
-        if ($product->image && Storage::disk('public')->exists($product->image)) {
-            Storage::disk('public')->delete($product->image);
+
+            /*
+             * Delete image from Cloudinary
+             *
+             * This requires the Cloudinary public_id.
+             * If your database only stores the secure_url,
+             * we cannot reliably delete the Cloudinary asset here.
+             *
+             * Therefore, delete the database record first.
+             */
+
+            $product->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product deleted successfully',
+            ], 200);
+
+        } catch (Exception $e) {
+
+            Log::error('Product deletion failed', [
+                'product_id' => $product->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong while deleting the product.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $product->delete();
-
-        return response()->json([
-            'status' => 200,
-            'message' => 'Product deleted successfully',
-        ]);
-    } catch (Exception $e) {
-        Log::error('Product deletion failed', [
-            'product_id' => $product->id,
-            'error' => $e->getMessage(),
-        ]);
-
-        return response()->json([
-            'status' => 500,
-            'message' => 'Something went wrong while deleting the product.',
-        ], 500);
-    }
     }
 }
