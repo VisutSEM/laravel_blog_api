@@ -94,9 +94,7 @@ class ProductController extends Controller
 
     if ($request->hasFile('image')) {
 
-        $cloudinary = new Cloudinary(
-            env('CLOUDINARY_URL')
-        );
+        $cloudinary = new Cloudinary();
 
         $result = $cloudinary->uploadApi()->upload(
             $request->file('image')->getRealPath(),
