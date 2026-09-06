@@ -11,6 +11,7 @@ use App\Models\Category;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Cloudinary\Cloudinary;
 class ProductController extends Controller
 {
     /**
@@ -87,19 +88,30 @@ class ProductController extends Controller
     //         ], 500);
     //     }
     // }
-    public function store(StoreProductRequest $request)
-    {
+   public function store(StoreProductRequest $request)
+{
+    $data = $request->validated();
 
-        $data = $request->validated();
-        if($request->hasFile('image')) {
-            $path = $request->file('image')->store('products', 'public');  
-            $data['image'] = $path;
-        }
+    if ($request->hasFile('image')) {
 
-        $product = Product::create($data);
-        return new ProductResource($product);
+        $cloudinary = new Cloudinary(
+            env('CLOUDINARY_URL')
+        );
+
+        $result = $cloudinary->uploadApi()->upload(
+            $request->file('image')->getRealPath(),
+            [
+                'folder' => 'products',
+            ]
+        );
+
+        $data['image'] = $result['secure_url'];
     }
 
+    $product = Product::create($data);
+
+    return new ProductResource($product);
+}
     /**
      * Display the specified resource.
      */
