@@ -88,12 +88,11 @@ class ProductController extends Controller
     //         ], 500);
     //     }
     // }
-   public function store(StoreProductRequest $request)
+  public function store(StoreProductRequest $request)
 {
     $data = $request->validated();
 
     if ($request->hasFile('image')) {
-
         $cloudinary = new Cloudinary();
 
         $result = $cloudinary->uploadApi()->upload(
