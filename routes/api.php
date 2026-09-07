@@ -28,7 +28,14 @@ Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanct
 Route::get('/users', [UserController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
+   // Profile
+    Route::get('/profile', [UserController::class, 'profile']);
+
+     // Upload / update profile image
     Route::post('/profile/picture', [UserController::class, 'updateProfilePicture']);
+
+    // Delete profile image
+    Route::delete('/profile/picture', [UserController::class, 'deleteProfilePicture']);
 });
 
 //admin routes
