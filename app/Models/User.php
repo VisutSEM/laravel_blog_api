@@ -16,6 +16,7 @@ use Laravel\Sanctum\HasApiTokens;
     'password',
     'phone',
     'profile_picture',
+    'fcm_token',
 ])]
 #[Hidden([
     'password',
