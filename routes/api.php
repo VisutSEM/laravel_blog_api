@@ -28,7 +28,7 @@ Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanct
 
 Route::get('/users', [UserController::class, 'show']);
 
-Rouut::post('/update-fcm-token', [NotificationController::class, 'updateFcmToken']);
+Route::post('/update-fcm-token', [NotificationController::class, 'updateFcmToken']);
 
 Route::middleware('auth:sanctum')->group(function () {
    // Profile
