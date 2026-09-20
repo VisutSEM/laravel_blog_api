@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\AdressController;
+use App\Http\Controllers\NotificationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -26,6 +27,8 @@ Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 Route::get('/users', [UserController::class, 'show']);
+
+Rouut::post('/update-fcm-token', [NotificationController::class, 'updateFcmToken']);
 
 Route::middleware('auth:sanctum')->group(function () {
    // Profile
