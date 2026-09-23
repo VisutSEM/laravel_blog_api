@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Banner;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Storage;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+
 class BannerController extends Controller
 {
     /**
@@ -13,11 +13,12 @@ class BannerController extends Controller
      */
     public function index()
     {
-        $banner =  Banner::get()->all();
+        $banners = Banner::all();
+
         return response()->json([
-            'message' => 'success',
-            'data' => $banner
-        ],200);
+            'success' => true,
+            'data' => $banners
+        ], 200);
     }
 
     /**
@@ -30,12 +31,16 @@ class BannerController extends Controller
             'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        // Upload image
-        $path = $request->file('image')->store('banners', 'public');
+        // Upload image to Cloudinary inside a 'banners' folder
+        $uploadedFile = $request->file('image')->storeOnCloudinary('banners');
+        
+        $imageUrl = $uploadedFile->getSecurePath(); // Full HTTPS URL
+        $publicId = $uploadedFile->getPublicId();   // Needed if you plan to delete later
 
         $banner = Banner::create([
             'title' => $request->title,
-            'image_url' => $path,
+            'image_url' => $imageUrl,
+            'public_id' => $publicId, // Optional: save public_id to simplify deletion
         ]);
 
         return response()->json([
@@ -44,11 +49,9 @@ class BannerController extends Controller
             'data' => [
                 'id' => $banner->id,
                 'title' => $banner->title,
-                'image_url' => asset('storage/' . $banner->image_url),
+                'image_url' => $banner->image_url,
             ]
         ], 201);
-
-        
     }
 
     /**
@@ -56,7 +59,7 @@ class BannerController extends Controller
      */
     public function show($id)
     {
-         $banner = Banner::find($id);
+        $banner = Banner::find($id);
 
         if (!$banner) {
             return response()->json([
@@ -75,39 +78,41 @@ class BannerController extends Controller
      * Update the specified resource in storage.
      */
     public function update(Request $request, $id)
-{
-    $banner = Banner::findOrFail($id);
+    {
+        $banner = Banner::findOrFail($id);
 
-    $request->validate([
-        'title' => 'required|string|max:255',
-        'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-    ]);
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
 
-    $banner->title = $request->title;
+        $banner->title = $request->title;
 
-    if ($request->hasFile('image')) {
+        if ($request->hasFile('image')) {
 
-        // Delete old image
-        if ($banner->image_url) {
-            Storage::disk('public')->delete($banner->image_url);
+            // Delete old image from Cloudinary if public_id is saved
+            if ($banner->public_id) {
+                Cloudinary::destroy($banner->public_id);
+            }
+
+            // Upload new image
+            $uploadedFile = $request->file('image')->storeOnCloudinary('banners');
+            
+            $banner->image_url = $uploadedFile->getSecurePath();
+            $banner->public_id = $uploadedFile->getPublicId();
         }
 
-        // Upload new image
-        $banner->image_url = $request->file('image')->store('banners', 'public');
+        $banner->save();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $banner->id,
+                'title' => $banner->title,
+                'image_url' => $banner->image_url,
+            ]
+        ]);
     }
-
-    $banner->save();
-
-    return response()->json([
-        'success' => true,
-        'data' => [
-            'id' => $banner->id,
-            'title' => $banner->title,
-            'image_url' => asset('storage/' . $banner->image_url),
-        ]
-    ]);
-}
-   
 
     /**
      * Remove the specified resource from storage.
@@ -116,24 +121,23 @@ class BannerController extends Controller
     {
         $banner = Banner::find($id);
 
-    if (!$banner) {
+        if (!$banner) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Banner not found.'
+            ], 404);
+        }
+
+        // Delete image from Cloudinary
+        if ($banner->public_id) {
+            Cloudinary::destroy($banner->public_id);
+        }
+
+        $banner->delete();
+
         return response()->json([
-            'success' => false,
-            'message' => 'Banner not found.'
-        ], 404);
-    }
-
-    // Delete image from storage
-    if ($banner->image_url && Storage::disk('public')->exists($banner->image_url)) {
-        Storage::disk('public')->delete($banner->image_url);
-    }
-
-    $banner->delete();
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Banner deleted successfully.'
-    ]);
-    
+            'success' => true,
+            'message' => 'Banner deleted successfully.'
+        ]);
     }
 }
