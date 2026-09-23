@@ -35,4 +35,19 @@ class User extends Authenticatable
             'phone' => 'string',
         ];
     }
+
+    public function routesNotificationForFcm(): string|array|null
+    {
+        return $this->fcm_token;
+    }
+
+    public function wishlist()
+{
+    return $this->belongsToMany(Product::class, 'wishlists')->withTimestamps();
+}
+
+    public function favoritedBy()
+{
+    return $this->belongsToMany(User::class, 'wishlists')->withTimestamps();
+}
 }

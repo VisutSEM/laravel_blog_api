@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\AdressController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\WishlistController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -67,4 +68,9 @@ Route::prefix('admin')->group(function () {
     Route::get('address', [AdressController::class, 'index']);
     Route::post('address', [AdressController::class, 'store']);
     Route::put('address/{id}', [AdressController::class, 'update']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/wishlist', [WishlistController::class, 'index']);
+    Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);
 });
