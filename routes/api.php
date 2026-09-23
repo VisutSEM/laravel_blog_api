@@ -1,76 +1,63 @@
 <?php
 
+use App\Http\Controllers\AddressController; // Fixed typo: AddressController
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BannerController;
-use App\Http\Controllers\CategoriesContrller;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\CategoriesController;
+use App\Http\Controllers\CategoriesController; // Removed duplicate & fixed typo
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProductController;
-use App\Http\Middleware\EnsureTokenIsValid;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\WishlistController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use App\Http\Controllers\AdressController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\WishlistController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-
-//Authentication User
+// Authentication User
 Route::post('register', [AuthController::class, 'register']);
-
 Route::post('login', [AuthController::class, 'login']);
-
 Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 Route::get('/users', [UserController::class, 'show']);
-
 Route::post('/update-fcm-token', [NotificationController::class, 'updateFcmToken']);
 
+// Profile Routes
 Route::middleware('auth:sanctum')->group(function () {
-   // Profile
     Route::get('/profile', [UserController::class, 'profile']);
-
-     // Upload / update profile image
     Route::post('/profile/picture', [UserController::class, 'updateProfilePicture']);
-
-    // Delete profile image
     Route::delete('/profile/picture', [UserController::class, 'deleteProfilePicture']);
+
+    // Wishlist routes
+    Route::get('/wishlist', [WishlistController::class, 'index']);
+    Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);
 });
 
-//admin routes
+// Admin routes
 Route::prefix('admin')->group(function () {
-    Route::post('categories', [CategoriesContrller::class, 'store']);
-    Route::get('categories', [CategoriesContrller::class, 'index']);
-    Route::get('categories/{id}', [CategoriesContrller::class, 'show']);
-    Route::put('categories/{category}', [CategoriesContrller::class, 'update']);
-    Route::delete('categories/{category}', [CategoriesContrller::class, 'destroy']);
-    
+    // Categories
+    Route::post('categories', [CategoriesController::class, 'store']);
+    Route::get('categories', [CategoriesController::class, 'index']);
+    Route::get('categories/{id}', [CategoriesController::class, 'show']);
+    Route::put('categories/{category}', [CategoriesController::class, 'update']);
+    Route::delete('categories/{category}', [CategoriesController::class, 'destroy']);
 
-    //============= Products ===============//
+    // Products
     Route::post('products', [ProductController::class, 'store']);
     Route::get('products', [ProductController::class, 'index']);
     Route::put('products/{product}', [ProductController::class, 'update']);
     Route::delete('products/{product}', [ProductController::class, 'destroy']);
 
-    // api.php or web.php
+    // Banners
     Route::get('banners', [BannerController::class, 'index']);
     Route::get('banners/{id}', [BannerController::class, 'show']);
     Route::post('banners', [BannerController::class, 'store']);
-    Route::post('banners/{id}', [BannerController::class, 'update']); // Using POST for file upload compatibility
+    Route::post('banners/{id}', [BannerController::class, 'update']);
     Route::delete('banners/{id}', [BannerController::class, 'destroy']);
 
-    //============= Address ===============//
-    Route::get('address', [AdressController::class, 'index']);
-    Route::post('address', [AdressController::class, 'store']);
-    Route::put('address/{id}', [AdressController::class, 'update']);
-});
-
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/wishlist', [WishlistController::class, 'index']);
-    Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);
+    // Address
+    Route::get('address', [AddressController::class, 'index']);
+    Route::post('address', [AddressController::class, 'store']);
+    Route::put('address/{id}', [AddressController::class, 'update']);
 });
