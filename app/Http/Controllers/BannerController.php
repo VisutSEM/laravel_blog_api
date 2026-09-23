@@ -31,24 +31,24 @@ class BannerController extends Controller
             'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        // Upload image to Cloudinary inside a 'banners' folder
-        $uploadedFile = $request->file('image')->storeOnCloudinary('banners');
-        
-        $imageUrl = $uploadedFile->getSecurePath(); // Full HTTPS URL
-        $publicId = $uploadedFile->getPublicId();   // Needed if you plan to delete later
+        // Upload image directly using Cloudinary facade
+        $uploadedFile = Cloudinary::upload(
+            $request->file('image')->getRealPath(),
+            ['folder' => 'banners']
+        );
 
         $banner = Banner::create([
-            'title' => $request->title,
-            'image_url' => $imageUrl,
-            'public_id' => $publicId, // Optional: save public_id to simplify deletion
+            'title'     => $request->title,
+            'image_url' => $uploadedFile->getSecurePath(),
+            'public_id' => $uploadedFile->getPublicId(),
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Banner created successfully.',
-            'data' => [
-                'id' => $banner->id,
-                'title' => $banner->title,
+            'data'    => [
+                'id'        => $banner->id,
+                'title'     => $banner->title,
                 'image_url' => $banner->image_url,
             ]
         ], 201);
@@ -70,8 +70,8 @@ class BannerController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $banner,
-        ]);
+            'data'    => $banner,
+        ], 200);
     }
 
     /**
@@ -90,14 +90,17 @@ class BannerController extends Controller
 
         if ($request->hasFile('image')) {
 
-            // Delete old image from Cloudinary if public_id is saved
+            // Delete old image from Cloudinary if public_id exists
             if ($banner->public_id) {
                 Cloudinary::destroy($banner->public_id);
             }
 
-            // Upload new image
-            $uploadedFile = $request->file('image')->storeOnCloudinary('banners');
-            
+            // Upload new image to Cloudinary
+            $uploadedFile = Cloudinary::upload(
+                $request->file('image')->getRealPath(),
+                ['folder' => 'banners']
+            );
+
             $banner->image_url = $uploadedFile->getSecurePath();
             $banner->public_id = $uploadedFile->getPublicId();
         }
@@ -106,12 +109,12 @@ class BannerController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'id' => $banner->id,
-                'title' => $banner->title,
+            'data'    => [
+                'id'        => $banner->id,
+                'title'     => $banner->title,
                 'image_url' => $banner->image_url,
             ]
-        ]);
+        ], 200);
     }
 
     /**
@@ -138,6 +141,6 @@ class BannerController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Banner deleted successfully.'
-        ]);
+        ], 200);
     }
 }
