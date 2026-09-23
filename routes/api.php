@@ -56,11 +56,12 @@ Route::prefix('admin')->group(function () {
     Route::put('products/{product}', [ProductController::class, 'update']);
     Route::delete('products/{product}', [ProductController::class, 'destroy']);
 
-    //============= Banners ===============//
+    // api.php or web.php
     Route::get('banners', [BannerController::class, 'index']);
+    Route::get('banners/{id}', [BannerController::class, 'show']);
     Route::post('banners', [BannerController::class, 'store']);
-    Route::put('/banners/{id}', [BannerController::class, 'update']); // with image upload
-    Route::delete('/banners/{id}', [BannerController::class, 'destroy']);
+    Route::post('banners/{id}', [BannerController::class, 'update']); // Using POST for file upload compatibility
+    Route::delete('banners/{id}', [BannerController::class, 'destroy']);
 
     //============= Address ===============//
     Route::get('address', [AdressController::class, 'index']);

@@ -4,10 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Banner;
 use Illuminate\Http\Request;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Cloudinary\Cloudinary;
 
 class BannerController extends Controller
 {
+    private Cloudinary $cloudinary;
+
+    public function __construct()
+    {
+        // Automatically reads CLOUDINARY_URL from your .env file
+        $this->cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -17,7 +25,7 @@ class BannerController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $banners
+            'data'    => $banners
         ], 200);
     }
 
@@ -27,20 +35,31 @@ class BannerController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'title' => 'required|string|max:255',
-            'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'title'     => 'required|string|max:255',
+            'image_url' => 'required_without:image|nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'image'     => 'required_without:image_url|nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        // Upload image directly using Cloudinary facade
-        $uploadedFile = Cloudinary::upload(
-            $request->file('image')->getRealPath(),
+        // Support either 'image_url' or 'image' from form-data input
+        $file = $request->file('image_url') ?? $request->file('image');
+
+        if (!$file) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No image file uploaded.'
+            ], 422);
+        }
+
+        // Upload image using official Cloudinary SDK
+        $result = $this->cloudinary->uploadApi()->upload(
+            $file->getRealPath(),
             ['folder' => 'banners']
         );
 
         $banner = Banner::create([
             'title'     => $request->title,
-            'image_url' => $uploadedFile->getSecurePath(),
-            'public_id' => $uploadedFile->getPublicId(),
+            'image_url' => $result['secure_url'],
+            'public_id' => $result['public_id'],
         ]);
 
         return response()->json([
@@ -82,27 +101,29 @@ class BannerController extends Controller
         $banner = Banner::findOrFail($id);
 
         $request->validate([
-            'title' => 'required|string|max:255',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'title'     => 'required|string|max:255',
+            'image_url' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'image'     => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         $banner->title = $request->title;
 
-        if ($request->hasFile('image')) {
+        $file = $request->file('image_url') ?? $request->file('image');
 
+        if ($file) {
             // Delete old image from Cloudinary if public_id exists
             if ($banner->public_id) {
-                Cloudinary::destroy($banner->public_id);
+                $this->cloudinary->uploadApi()->destroy($banner->public_id);
             }
 
-            // Upload new image to Cloudinary
-            $uploadedFile = Cloudinary::upload(
-                $request->file('image')->getRealPath(),
+            // Upload new image
+            $result = $this->cloudinary->uploadApi()->upload(
+                $file->getRealPath(),
                 ['folder' => 'banners']
             );
 
-            $banner->image_url = $uploadedFile->getSecurePath();
-            $banner->public_id = $uploadedFile->getPublicId();
+            $banner->image_url = $result['secure_url'];
+            $banner->public_id = $result['public_id'];
         }
 
         $banner->save();
@@ -133,7 +154,7 @@ class BannerController extends Controller
 
         // Delete image from Cloudinary
         if ($banner->public_id) {
-            Cloudinary::destroy($banner->public_id);
+            $this->cloudinary->uploadApi()->destroy($banner->public_id);
         }
 
         $banner->delete();
