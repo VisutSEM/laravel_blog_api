@@ -15,18 +15,17 @@ use Illuminate\Support\Str;
 class ProductController extends Controller
 {
     /**
-     * Display a listing of the products.
+     * Display a listing of products and categories.
      */
     public function index()
     {
         $categories = Category::with('products')->get();
 
-        $featuredProducts = $categories
-            ->flatMap->products
-            ->take(5);
+        // Optimized query: retrieve top 5 featured/latest products directly from DB
+        $featuredProducts = Product::latest()->take(5)->get();
 
         return response()->json([
-            'categories' => $categories,
+            'categories'        => $categories,
             'featured_products' => ProductResource::collection($featuredProducts),
         ], 200);
     }
@@ -44,9 +43,7 @@ class ProductController extends Controller
                 $data['slug'] = Str::slug($data['name']);
             }
 
-            /*
-             * Upload image to Cloudinary
-             */
+            // Upload image to Cloudinary
             if ($request->hasFile('image')) {
                 $cloudinary = new Cloudinary();
 
@@ -54,12 +51,9 @@ class ProductController extends Controller
                     ->uploadApi()
                     ->upload(
                         $request->file('image')->getRealPath(),
-                        [
-                            'folder' => 'products',
-                        ]
+                        ['folder' => 'products']
                     );
 
-                // Save Cloudinary secure URL
                 $data['image'] = $result['secure_url'];
             }
 
@@ -68,19 +62,16 @@ class ProductController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Product added successfully',
-                'data' => new ProductResource($product),
+                'data'    => new ProductResource($product),
             ], 201);
 
         } catch (Exception $e) {
-
-            Log::error('Product creation failed', [
-                'error' => $e->getMessage(),
-            ]);
+            Log::error('Product creation failed', ['error' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create product',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -92,83 +83,62 @@ class ProductController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => new ProductResource($product),
+            'data'    => new ProductResource($product),
         ], 200);
     }
 
     /**
-     * Show the form for editing the specified product.
-     */
-    public function edit(Product $product)
-    {
-        //
-    }
-
-    /**
-     * Update the specified product.
+     * Update the specified product (includes stock support).
      */
     public function update(Request $request, Product $product)
     {
         try {
-
             $validated = $request->validate([
                 'category_id' => 'sometimes|required|exists:categories,id',
-                'name' => 'sometimes|required|string|max:255',
-                'slug' => 'nullable|string|max:255|unique:products,slug,' . $product->id,
-                'price' => 'sometimes|required|numeric|min:0',
+                'name'        => 'sometimes|required|string|max:255',
+                'slug'        => 'nullable|string|max:255|unique:products,slug,' . $product->id,
+                'price'       => 'sometimes|required|numeric|min:0',
+                'stock'       => 'sometimes|required|integer|min:0', // Added stock validation
                 'description' => 'nullable|string',
-                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+                'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ]);
 
-            // Generate slug if name changed and slug wasn't provided
-            if (
-                isset($validated['name']) &&
-                empty($validated['slug'])
-            ) {
+            if (isset($validated['name']) && empty($validated['slug'])) {
                 $validated['slug'] = Str::slug($validated['name']);
             }
 
-            /*
-             * Upload new image to Cloudinary
-             */
             if ($request->hasFile('image')) {
-
                 $cloudinary = new Cloudinary();
 
                 $result = $cloudinary
                     ->uploadApi()
                     ->upload(
                         $request->file('image')->getRealPath(),
-                        [
-                            'folder' => 'products',
-                        ]
+                        ['folder' => 'products']
                     );
 
                 $validated['image'] = $result['secure_url'];
             }
 
             $product->update($validated);
-
-            // Refresh model
             $product->refresh();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Product updated successfully',
-                'data' => new ProductResource($product),
+                'data'    => new ProductResource($product),
             ], 200);
 
         } catch (Exception $e) {
-
             Log::error('Product update failed', [
                 'product_id' => $product->id,
-                'error' => $e->getMessage(),
+                'error'      => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong while updating the product.',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -179,17 +149,6 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         try {
-
-            /*
-             * Delete image from Cloudinary
-             *
-             * This requires the Cloudinary public_id.
-             * If your database only stores the secure_url,
-             * we cannot reliably delete the Cloudinary asset here.
-             *
-             * Therefore, delete the database record first.
-             */
-
             $product->delete();
 
             return response()->json([
@@ -198,16 +157,15 @@ class ProductController extends Controller
             ], 200);
 
         } catch (Exception $e) {
-
             Log::error('Product deletion failed', [
                 'product_id' => $product->id,
-                'error' => $e->getMessage(),
+                'error'      => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong while deleting the product.',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
