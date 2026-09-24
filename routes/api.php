@@ -32,6 +32,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // Wishlist routes
     Route::get('/wishlist', [WishlistController::class, 'index']);
     Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);
+
+        // --- Cart Routes ---
+    Route::get('/cart', [CartController::class, 'index']);
+    Route::post('/cart/add', [CartController::class, 'addToCart']);
+    Route::put('/cart/update/{id}', [CartController::class, 'updateQuantity']);
+    Route::delete('/cart/remove/{id}', [CartController::class, 'destroy']);
+
+    // --- Checkout Route ---
+    Route::post('/checkout', [CheckoutController::class, 'processCheckout']);
 });
 
 // Admin routes
@@ -60,26 +69,4 @@ Route::prefix('admin')->group(function () {
     Route::get('address', [AddressController::class, 'index']);
     Route::post('address', [AddressController::class, 'store']);
     Route::put('address/{id}', [AddressController::class, 'update']);
-});
-
-/*
-|--------------------------------------------------------------------------
-| Protected API Routes (Sanctum Authentication Required)
-|--------------------------------------------------------------------------
-*/
-Route::middleware('auth:sanctum')->group(function () {
-
-    // --- Wishlist Routes ---
-    Route::get('/wishlist', [WishlistController::class, 'index']);
-    Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);
-
-    // --- Cart Routes ---
-    Route::get('/cart', [CartController::class, 'index']);
-    Route::post('/cart/add', [CartController::class, 'addToCart']);
-    Route::put('/cart/update/{id}', [CartController::class, 'updateQuantity']);
-    Route::delete('/cart/remove/{id}', [CartController::class, 'destroy']);
-
-    // --- Checkout Route ---
-    Route::post('/checkout', [CheckoutController::class, 'processCheckout']);
-
 });
