@@ -13,21 +13,13 @@ class Order extends Model
 
     protected $fillable = [
         'user_id',
-        'order_number',     // Added to allow mass assignment from OrderController
+        'order_number',
         'total_amount',
         'status',
-        'payment_status',   // Added to track unpaid/paid status
+        'payment_status',
         'payment_method',
         'shipping_address',
     ];
-
-    /**
-     * Relationship: Order belongs to a User.
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
 
     /**
      * Relationship: Order has many OrderItems.
@@ -35,5 +27,13 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Relationship: Order belongs to a User.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }
