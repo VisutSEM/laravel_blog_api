@@ -11,8 +11,10 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('order_number')->unique(); // Added for order tracking
             $table->decimal('total_amount', 10, 2);
             $table->string('status')->default('pending'); // pending, paid, shipped, cancelled
+            $table->string('payment_status')->default('unpaid'); // unpaid, paid, refunded
             $table->string('payment_method')->default('cash_on_delivery');
             $table->text('shipping_address');
             $table->timestamps();
@@ -23,7 +25,7 @@ return new class extends Migration
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
             $table->integer('quantity');
-            $table->decimal('unit_price', 10, 2);
+            $table->decimal('unit_price', 10, 2); // Preserved unit_price column
             $table->timestamps();
         });
     }
