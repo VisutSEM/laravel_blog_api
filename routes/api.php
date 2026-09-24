@@ -37,7 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // --- Cart Routes (RESTful API Endpoint Alignment) ---
     Route::get('/cart', [CartController::class, 'index']);
-    Route::post('/cart', [CartController::class, 'addToCart']);            // Changed from /cart/add -> /cart
+    Route::post('/cart', [CartController::class, 'store']);            // Changed from /cart/add -> /cart
     Route::put('/cart/{id}', [CartController::class, 'updateQuantity']);    // Changed from /cart/update/{id} -> /cart/{id}
     Route::delete('/cart/{id}', [CartController::class, 'destroy']);       // Changed from /cart/remove/{id} -> /cart/{id}
 
