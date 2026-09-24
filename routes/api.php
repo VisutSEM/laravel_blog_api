@@ -42,7 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/cart/{id}', [CartController::class, 'destroy']);       // Changed from /cart/remove/{id} -> /cart/{id}
 
     // --- Checkout Route ---
-    Route::post('/checkout', [CheckoutController::class, 'processCheckout']);
+    Route::post('/checkout', [CheckoutController::class, 'checkout']);
 });
 
 // Admin routes
