@@ -1,13 +1,15 @@
 <?php
 
-use App\Http\Controllers\AddressController; // Fixed typo: AddressController
+use App\Http\Controllers\AddressController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BannerController;
-use App\Http\Controllers\CategoriesController; // Removed duplicate & fixed typo
+use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController; // Fixed missing import
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -23,7 +25,7 @@ Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanct
 Route::get('/users', [UserController::class, 'show']);
 Route::post('/update-fcm-token', [NotificationController::class, 'updateFcmToken']);
 
-// Profile Routes
+// Profile & Cart Routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [UserController::class, 'profile']);
     Route::post('/profile/picture', [UserController::class, 'updateProfilePicture']);
@@ -33,11 +35,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/wishlist', [WishlistController::class, 'index']);
     Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);
 
-        // --- Cart Routes ---
+    // --- Cart Routes (RESTful API Endpoint Alignment) ---
     Route::get('/cart', [CartController::class, 'index']);
-    Route::post('/cart/add', [CartController::class, 'addToCart']);
-    Route::put('/cart/update/{id}', [CartController::class, 'updateQuantity']);
-    Route::delete('/cart/remove/{id}', [CartController::class, 'destroy']);
+    Route::post('/cart', [CartController::class, 'addToCart']);            // Changed from /cart/add -> /cart
+    Route::put('/cart/{id}', [CartController::class, 'updateQuantity']);    // Changed from /cart/update/{id} -> /cart/{id}
+    Route::delete('/cart/{id}', [CartController::class, 'destroy']);       // Changed from /cart/remove/{id} -> /cart/{id}
 
     // --- Checkout Route ---
     Route::post('/checkout', [CheckoutController::class, 'processCheckout']);
