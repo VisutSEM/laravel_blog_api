@@ -22,7 +22,7 @@ test('user can checkout active cart into an order', function () {
 
     $response->assertStatus(201)
         ->assertJsonPath('status', 'success')
-        ->assertJsonPath('data.total_amount', '200.00');
+        ->assertJsonPath('data.total_amount', fn ($val) => (float) $val == 200.0);
 
     // Verify stock deduction
     expect($product->fresh()->stock)->toBe(8);

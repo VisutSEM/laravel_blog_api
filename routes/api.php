@@ -23,9 +23,12 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/users', [UserController::class, 'show']);
 
-// Public catalog endpoints (for mobile app & store visitors)
+// Category endpoints (supports both /categories and /admin/categories)
 Route::get('/categories', [CategoriesController::class, 'index']);
 Route::get('/categories/{category}', [CategoriesController::class, 'show']);
+Route::post('/categories', [CategoriesController::class, 'store']);
+Route::match(['put', 'patch'], '/categories/{category}', [CategoriesController::class, 'update']);
+Route::delete('/categories/{category}', [CategoriesController::class, 'destroy']);
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{product}', [ProductController::class, 'show']);
@@ -95,7 +98,7 @@ Route::prefix('admin')->group(function () {
     Route::get('categories', [CategoriesController::class, 'index']);
     Route::get('categories/{id}', [CategoriesController::class, 'show']);
     Route::post('categories', [CategoriesController::class, 'store']);
-    Route::put('categories/{category}', [CategoriesController::class, 'update']);
+    Route::match(['put', 'patch'], 'categories/{category}', [CategoriesController::class, 'update']);
     Route::delete('categories/{category}', [CategoriesController::class, 'destroy']);
 
     // Products
