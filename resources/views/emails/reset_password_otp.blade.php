@@ -91,7 +91,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>{{ config('app.name', 'Laravel') }}</h1>
+            <h1>{{ config('app.name', 'Ecommerce App') }}</h1>
         </div>
         <div class="content">
             <div class="greeting">Hello {{ $userName }},</div>
