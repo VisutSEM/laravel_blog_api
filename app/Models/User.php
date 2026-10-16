@@ -6,6 +6,8 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -36,25 +38,51 @@ class User extends Authenticatable
         ];
     }
 
-    public function routesNotificationForFcm(): string|array|null
+    /**
+     * Route notification for Firebase Cloud Messaging (FCM).
+     */
+    public function routeNotificationForFcm(): string|array|null
     {
         return $this->fcm_token;
     }
 
-    public function wishlist()
-{
-    return $this->belongsToMany(Product::class, 'wishlists')->withTimestamps();
-}
+    /**
+     * Alias for routeNotificationForFcm to support legacy calls.
+     */
+    public function routesNotificationForFcm(): string|array|null
+    {
+        return $this->routeNotificationForFcm();
+    }
 
-    // In app/Models/User.php
+    /**
+     * Relationship: User's wishlist products.
+     */
+    public function wishlist(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'wishlists')->withTimestamps();
+    }
 
-public function carts()
-{
-    return $this->hasMany(Cart::class);
-}
+    /**
+     * Relationship: User's cart items.
+     */
+    public function carts(): HasMany
+    {
+        return $this->hasMany(Cart::class);
+    }
 
-public function orders()
-{
-    return $this->hasMany(Order::class);
-}
+    /**
+     * Relationship: User's orders.
+     */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    /**
+     * Relationship: User's saved addresses.
+     */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Adress::class);
+    }
 }

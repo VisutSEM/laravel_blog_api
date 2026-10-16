@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'cloudinary' => [
+        'url' => env('CLOUDINARY_URL'),
+    ],
+
+    'firebase' => [
+        'credentials' => env('FIREBASE_CREDENTIALS'),
+    ],
+
 ];

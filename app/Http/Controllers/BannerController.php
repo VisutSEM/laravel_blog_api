@@ -12,8 +12,8 @@ class BannerController extends Controller
 
     public function __construct()
     {
-        // Automatically reads CLOUDINARY_URL from your .env file
-        $this->cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+        // Automatically reads CLOUDINARY_URL from config or environment
+        $this->cloudinary = new Cloudinary(config('services.cloudinary.url', env('CLOUDINARY_URL')));
     }
 
     /**
