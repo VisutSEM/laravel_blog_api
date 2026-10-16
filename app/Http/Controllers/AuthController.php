@@ -12,16 +12,18 @@ class AuthController extends Controller
     //register
     public function register(Request $request){
         $validated = $request->validate([
-        'name'=>'required|string|max:255',
-        'email'=>'required|email|unique:users,email',
-        'password'=> 'required|string|min:6'
-    ]);
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
+            'phone'    => 'nullable|string|max:30|unique:users,phone',
+            'password' => 'required|string|min:6'
+        ]);
 
-    $user = User::create([
-         'name' => $validated['name'],
-         'email' => $validated['email'],
-         'password'=> Hash::make($validated['password'])
-    ]);
+        $user = User::create([
+            'name'     => $validated['name'],
+            'email'    => $validated['email'],
+            'phone'    => $validated['phone'] ?? null,
+            'password' => Hash::make($validated['password'])
+        ]);
 
     return response()->json([
         'message' => 'Registered successfully',

@@ -8,6 +8,7 @@ use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WishlistController;
@@ -22,6 +23,14 @@ use Illuminate\Support\Facades\Route;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/users', [UserController::class, 'show']);
+
+// Password Reset Routes (Email or Phone number OTP flow)
+Route::post('/password/forgot', [PasswordResetController::class, 'sendResetOtp']);
+Route::post('/password/verify-otp', [PasswordResetController::class, 'verifyOtp']);
+Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']);
+// Convenience aliases
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetOtp']);
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 
 // Category endpoints (supports both /categories and /admin/categories)
 Route::get('/categories', [CategoriesController::class, 'index']);
