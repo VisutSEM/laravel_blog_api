@@ -88,6 +88,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     Route::match(['put', 'patch'], '/orders/{order}', [OrderController::class, 'update']);
     Route::match(['put', 'patch'], '/orders/{order}/status', [OrderController::class, 'updateStatus']);
+    Route::match(['post', 'put', 'patch'], '/orders/{order}/approve-delivery', [OrderController::class, 'approveDelivery']);
     Route::put('/orders/{order}/cancel', [OrderController::class, 'cancel']);
     Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
 
@@ -132,4 +133,11 @@ Route::prefix('admin')->group(function () {
     Route::get('address/{id}', [AddressController::class, 'show']);
     Route::put('address/{id}', [AddressController::class, 'update']);
     Route::delete('address/{id}', [AddressController::class, 'destroy']);
+
+    // Orders Management & Delivery Approval
+    Route::get('orders', [OrderController::class, 'adminIndex']);
+    Route::get('orders/{id}', [OrderController::class, 'adminShow']);
+    Route::match(['put', 'patch'], 'orders/{id}/status', [OrderController::class, 'adminUpdateStatus']);
+    Route::match(['post', 'put', 'patch'], 'orders/{id}/approve-delivery', [OrderController::class, 'approveDelivery']);
+    Route::match(['post', 'put', 'patch'], 'orders/{id}/deliver', [OrderController::class, 'approveDelivery']);
 });

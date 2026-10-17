@@ -177,4 +177,157 @@ class OrderController extends Controller
             'message' => 'Order history deleted.',
         ], 200);
     }
+
+    /**
+     * Admin: List all orders across all users with optional filters.
+     */
+    public function adminIndex(Request $request): JsonResponse
+    {
+        $query = Order::with(['items.product', 'user']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('payment_status')) {
+            $query->where('payment_status', $request->payment_status);
+        }
+
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->payment_method);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhere('shipping_address', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($uq) use ($search) {
+                      $uq->where('name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $perPage = (int) $request->input('per_page', 15);
+        $orders = $query->latest()->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'status'  => 'success',
+            'data'    => $orders,
+        ], 200);
+    }
+
+    /**
+     * Admin: Show details of any order.
+     */
+    public function adminShow(Request $request, int|string $id): JsonResponse
+    {
+        $order = Order::with(['items.product', 'user'])->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'status'  => 'success',
+            'order'   => $order,
+            'data'    => $order,
+        ], 200);
+    }
+
+    /**
+     * Admin: Update order status, payment status, or notes.
+     */
+    public function adminUpdateStatus(Request $request, int|string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status'         => 'required|string|in:pending,processing,shipped,delivered,completed,cancelled',
+            'payment_status' => 'nullable|string|in:unpaid,paid,refunded',
+            'notes'          => 'nullable|string|max:500',
+        ]);
+
+        $order = Order::findOrFail($id);
+
+        if ($validated['status'] === 'cancelled' && $order->status !== 'cancelled') {
+            DB::transaction(function () use ($order) {
+                foreach ($order->items as $item) {
+                    if ($item->product) {
+                        $item->product->increment('stock', $item->quantity);
+                    }
+                }
+                $order->update(['status' => 'cancelled']);
+            });
+
+            return response()->json([
+                'success' => true,
+                'status'  => 'success',
+                'message' => 'Order cancelled and stock restored.',
+                'order'   => $order->fresh(['items.product', 'user']),
+                'data'    => $order->fresh(['items.product', 'user']),
+            ], 200);
+        }
+
+        $newStatus = $validated['status'];
+        $newPaymentStatus = $validated['payment_status'] ?? $order->payment_status;
+
+        // COD Order Lifecycle:
+        // When admin/rider marks delivered or completed, auto-mark payment_status as 'paid'
+        if (in_array($newStatus, ['delivered', 'completed']) && $order->payment_method === 'cash_on_delivery') {
+            $newPaymentStatus = 'paid';
+        }
+
+        $order->update([
+            'status'         => $newStatus,
+            'payment_status' => $newPaymentStatus,
+            'notes'          => $validated['notes'] ?? $order->notes,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'status'  => 'success',
+            'message' => "Order status updated to '{$newStatus}'.",
+            'order'   => $order->fresh(['items.product', 'user']),
+            'data'    => $order->fresh(['items.product', 'user']),
+        ], 200);
+    }
+
+    /**
+     * Admin or Delivery Rider: Approve that an order has been successfully delivered.
+     * Automatically sets status to 'delivered' and for COD sets payment_status to 'paid'.
+     */
+    public function approveDelivery(Request $request, int|string $id): JsonResponse
+    {
+        $order = Order::findOrFail($id);
+
+        if ($order->status === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'status'  => 'error',
+                'message' => 'Cannot approve delivery for a cancelled order.',
+            ], 422);
+        }
+
+        $updateData = [
+            'status' => 'delivered',
+        ];
+
+        // For COD orders: Approving delivery confirms physical cash collection
+        if ($order->payment_method === 'cash_on_delivery') {
+            $updateData['payment_status'] = 'paid';
+        }
+
+        if ($request->filled('notes')) {
+            $updateData['notes'] = $request->notes;
+        }
+
+        $order->update($updateData);
+
+        return response()->json([
+            'success' => true,
+            'status'  => 'success',
+            'message' => 'Order delivery approved successfully. Payment marked as paid.',
+            'order'   => $order->fresh(['items.product', 'user']),
+            'data'    => $order->fresh(['items.product', 'user']),
+        ], 200);
+    }
 }

@@ -221,3 +221,67 @@ test('cod order lifecycle automatically marks payment_status as paid on delivery
 
     expect(Order::find($orderId)->payment_status)->toBe('paid');
 });
+
+test('admin can view all orders across different users', function () {
+    $user1 = User::factory()->create();
+    $user2 = User::factory()->create();
+
+    Order::factory()->count(2)->create(['user_id' => $user1->id]);
+    Order::factory()->count(3)->create(['user_id' => $user2->id]);
+
+    $response = $this->getJson('/api/admin/orders');
+
+    $response->assertStatus(200)
+        ->assertJsonPath('success', true)
+        ->assertJsonCount(5, 'data.data');
+});
+
+test('admin can approve delivery and COD order is automatically marked as paid', function () {
+    $user = User::factory()->create();
+    $product = Product::factory()->create(['price' => 25.00, 'stock' => 5]);
+
+    $order = Order::factory()->create([
+        'user_id'        => $user->id,
+        'payment_method' => 'cash_on_delivery',
+        'payment_status' => 'unpaid',
+        'status'         => 'shipped',
+        'total_amount'   => 25.00,
+    ]);
+
+    $order->items()->create([
+        'product_id'   => $product->id,
+        'product_name' => $product->name,
+        'quantity'     => 1,
+        'unit_price'   => 25.00,
+        'price'        => 25.00,
+    ]);
+
+    // Admin approves delivery
+    $response = $this->postJson("/api/admin/orders/{$order->id}/approve-delivery", [
+        'notes' => 'Cash collected $25.00 by rider Sok',
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('message', 'Order delivery approved successfully. Payment marked as paid.')
+        ->assertJsonPath('order.status', 'delivered')
+        ->assertJsonPath('order.payment_status', 'paid')
+        ->assertJsonPath('order.notes', 'Cash collected $25.00 by rider Sok');
+
+    expect($order->fresh()->status)->toBe('delivered');
+    expect($order->fresh()->payment_status)->toBe('paid');
+});
+
+test('admin cannot approve delivery for a cancelled order', function () {
+    $user = User::factory()->create();
+    $order = Order::factory()->create([
+        'user_id' => $user->id,
+        'status'  => 'cancelled',
+    ]);
+
+    $response = $this->postJson("/api/admin/orders/{$order->id}/approve-delivery");
+
+    $response->assertStatus(422)
+        ->assertJsonPath('success', false)
+        ->assertJsonPath('message', 'Cannot approve delivery for a cancelled order.');
+});
