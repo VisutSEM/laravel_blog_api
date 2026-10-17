@@ -13,16 +13,30 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_id',
-        'quantity',
+        'product_name',
+        'price',
         'unit_price',
+        'quantity',
+        'image',
     ];
 
     protected function casts(): array
     {
         return [
-            'quantity' => 'integer',
+            'quantity'   => 'integer',
+            'price'      => 'decimal:2',
             'unit_price' => 'decimal:2',
         ];
+    }
+
+    public function getPriceAttribute($value)
+    {
+        return $value ?? $this->unit_price;
+    }
+
+    public function getUnitPriceAttribute($value)
+    {
+        return $value ?? $this->price;
     }
 
     /**

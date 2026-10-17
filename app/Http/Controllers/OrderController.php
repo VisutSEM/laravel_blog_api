@@ -33,89 +33,7 @@ class OrderController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'shipping_address' => 'required|string|max:500',
-            'payment_method'   => 'nullable|string|in:cash_on_delivery,credit_card,bank_transfer',
-        ]);
-
-        $user = $request->user();
-
-        // Fetch user's cart items with products
-        $cartItems = Cart::with('product')
-            ->where('user_id', $user->id)
-            ->get();
-
-        if ($cartItems->isEmpty()) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'Your cart is empty.',
-            ], 400);
-        }
-
-        // Validate stock before placing order
-        foreach ($cartItems as $item) {
-            if (!$item->product) {
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => 'One of the items in your cart is no longer available.',
-                ], 422);
-            }
-
-            if ($item->product->stock < $item->quantity) {
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => "Insufficient stock for product: {$item->product->name}",
-                ], 422);
-            }
-        }
-
-        // Calculate total amount
-        $totalAmount = $cartItems->sum(function ($item) {
-            return $item->quantity * $item->product->price;
-        });
-
-        // Wrap order creation and inventory updates in a DB transaction
-        try {
-            $order = DB::transaction(function () use ($user, $cartItems, $totalAmount, $validated) {
-                $order = Order::create([
-                    'user_id'          => $user->id,
-                    'order_number'     => 'ORD-' . date('Ymd') . '-' . strtoupper(Str::random(6)),
-                    'total_amount'     => $totalAmount,
-                    'status'           => 'pending',
-                    'shipping_address' => $validated['shipping_address'],
-                    'payment_method'   => $validated['payment_method'] ?? 'cash_on_delivery',
-                    'payment_status'   => 'unpaid',
-                ]);
-
-                foreach ($cartItems as $item) {
-                    OrderItem::create([
-                        'order_id'   => $order->id,
-                        'product_id' => $item->product_id,
-                        'unit_price' => $item->product->price,
-                        'quantity'   => $item->quantity,
-                    ]);
-
-                    $item->product->decrement('stock', $item->quantity);
-                }
-
-                // Clear user's cart
-                Cart::where('user_id', $user->id)->delete();
-
-                return $order;
-            });
-
-            return response()->json([
-                'status'  => 'success',
-                'message' => 'Order placed successfully.',
-                'data'    => $order->load('items.product'),
-            ], 201);
-
-        } catch (\Throwable $e) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'Failed to place order: ' . $e->getMessage(),
-            ], 500);
-        }
+        return app(CheckoutController::class)->checkout($request);
     }
 
     /**
@@ -176,15 +94,61 @@ class OrderController extends Controller
     }
 
     /**
-     * Update order (supports cancel status).
+     * Update order status or details (Supports full COD lifecycle and cancellation).
      */
     public function update(Request $request, Order|int|string $order): JsonResponse
     {
         $validated = $request->validate([
-            'status' => 'required|string|in:cancelled',
+            'status'         => 'nullable|string|in:pending,processing,shipped,delivered,completed,cancelled',
+            'payment_status' => 'nullable|string|in:unpaid,paid,refunded',
+            'notes'          => 'nullable|string|max:500',
         ]);
 
-        return $this->cancel($request, $order);
+        $userId = $request->user()->id;
+        $orderModel = $order instanceof Order ? $order : Order::where('user_id', $userId)->findOrFail($order);
+
+        if ($orderModel->user_id !== $userId) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 403);
+        }
+
+        // If cancelling, reuse cancel logic which safely restores stock
+        if (isset($validated['status']) && $validated['status'] === 'cancelled') {
+            return $this->cancel($request, $orderModel);
+        }
+
+        $newStatus = $validated['status'] ?? $orderModel->status;
+        $newPaymentStatus = $validated['payment_status'] ?? $orderModel->payment_status;
+
+        // COD Order Lifecycle:
+        // When rider/store marks status as 'delivered' or 'completed',
+        // if payment_method is COD, payment_status automatically transitions to 'paid'.
+        if (in_array($newStatus, ['delivered', 'completed']) && $orderModel->payment_method === 'cash_on_delivery') {
+            $newPaymentStatus = 'paid';
+        }
+
+        $orderModel->update([
+            'status'         => $newStatus,
+            'payment_status' => $newPaymentStatus,
+            'notes'          => $validated['notes'] ?? $orderModel->notes,
+        ]);
+
+        $orderModel->load(['items.product']);
+
+        return response()->json([
+            'success' => true,
+            'status'  => 'success',
+            'message' => 'Order updated successfully.',
+            'order'   => $orderModel,
+            'data'    => $orderModel,
+        ], 200);
+    }
+
+    /**
+     * Update order status directly.
+     */
+    public function updateStatus(Request $request, Order|int|string $order): JsonResponse
+    {
+        return $this->update($request, $order);
     }
 
     /**

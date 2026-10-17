@@ -15,11 +15,23 @@ class Order extends Model
         'user_id',
         'order_number',
         'total_amount',
+        'shipping_fee',
         'status',
         'payment_status',
         'payment_method',
         'shipping_address',
+        'notes',
+        'address_id',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'total_amount' => 'decimal:2',
+            'shipping_fee' => 'decimal:2',
+            'address_id'   => 'integer',
+        ];
+    }
 
     /**
      * Relationship: Order has many OrderItems.
